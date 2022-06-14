@@ -51,10 +51,22 @@ function finalhandler (req, res, options) {
   // get error callback
   var onerror = opts.onerror
 
+  // get error transformer, transforms error before handling as error
+  // this gives users a chance to transform errors to http-errors to
+  // inform behavior
+  var errortransform = opts.errortransform || ((err) => err);
+
   return function (err) {
     var headers
     var body
     var status
+
+    // schedule onerror callback
+    if (err && onerror) {
+      defer(onerror, err, req, res)
+    }
+
+    err = errortransform(err)
 
     // ignore 404 on in-flight response
     if (!err && headersSent(res)) {
@@ -84,11 +96,6 @@ function finalhandler (req, res, options) {
     }
 
     debug('default %s', status)
-
-    // schedule onerror callback
-    if (err && onerror) {
-      defer(onerror, err, req, res)
-    }
 
     // cannot actually respond
     if (headersSent(res)) {
