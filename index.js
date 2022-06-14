@@ -17,49 +17,16 @@
 
 var debug = require('debug')('finalhandler')
 var encodeUrl = require('encodeurl')
-var escapeHtml = require('escape-html')
 var onFinished = require('on-finished')
 var parseUrl = require('parseurl')
 var statuses = require('statuses')
 var unpipe = require('unpipe')
-
-/**
- * Module variables.
- * @private
- */
-
-var DOUBLE_SPACE_REGEXP = /\x20{2}/g
-var NEWLINE_REGEXP = /\n/g
 
 /* istanbul ignore next */
 var defer = typeof setImmediate === 'function'
   ? setImmediate
   : function (fn) { process.nextTick(fn.bind.apply(fn, arguments)) }
 var isFinished = onFinished.isFinished
-
-/**
- * Create a minimal HTML document.
- *
- * @param {string} message
- * @private
- */
-
-function createHtmlDocument (message) {
-  var body = escapeHtml(message)
-    .replace(NEWLINE_REGEXP, '<br>')
-    .replace(DOUBLE_SPACE_REGEXP, ' &nbsp;')
-
-  return '<!DOCTYPE html>\n' +
-    '<html lang="en">\n' +
-    '<head>\n' +
-    '<meta charset="utf-8">\n' +
-    '<title>Error</title>\n' +
-    '</head>\n' +
-    '<body>\n' +
-    '<pre>' + body + '</pre>\n' +
-    '</body>\n' +
-    '</html>\n'
-}
 
 /**
  * Module exports.
@@ -81,15 +48,12 @@ module.exports = finalhandler
 function finalhandler (req, res, options) {
   var opts = options || {}
 
-  // get environment
-  var env = opts.env || process.env.NODE_ENV || 'development'
-
   // get error callback
   var onerror = opts.onerror
 
   return function (err) {
     var headers
-    var msg
+    var body
     var status
 
     // ignore 404 on in-flight response
@@ -112,11 +76,11 @@ function finalhandler (req, res, options) {
       }
 
       // get error message
-      msg = getErrorMessage(err, status, env)
+      body = getErrorBody(err, status)
     } else {
       // not found
       status = 404
-      msg = 'Cannot ' + req.method + ' ' + encodeUrl(getResourceName(req))
+      body = { reason: 'Cannot ' + req.method + ' ' + encodeUrl(getResourceName(req)) }
     }
 
     debug('default %s', status)
@@ -134,7 +98,7 @@ function finalhandler (req, res, options) {
     }
 
     // send response
-    send(req, res, status, headers, msg)
+    send(req, res, status, headers, body)
   }
 }
 
@@ -167,25 +131,30 @@ function getErrorHeaders (err) {
  *
  * @param {Error} err
  * @param {number} status
- * @param {string} env
  * @return {string}
  * @private
  */
 
-function getErrorMessage (err, status, env) {
-  var msg
+function getErrorBody (err, status) {
+  // TODO:
+  // We want to respect http-errors, basically `expose` flag on whether we should add info in
+  // error to output. I'd like to be able to throw a Zod error -> HTTP error with 400 -> good response
+  // and in time just support more errors in the same pipeline
+  // Maybe config for finalhandler? That can be given in via dexpress
+  if(err.expose) {
+    var body = { reason: err.message || statuses.message[status] };
 
-  if (env !== 'production') {
-    // use err.stack, which typically includes err.message
-    msg = err.stack
-
-    // fallback to err.toString() when possible
-    if (!msg && typeof err.toString === 'function') {
-      msg = err.toString()
+    for (var key in err) {
+      if([ 'message', 'reason' ].includes(key)) {
+        continue;
+      }
+      body[key] = err[key];
     }
+
+    return body;
   }
 
-  return msg || statuses.message[status]
+  return { reason: statuses.message[status] }
 }
 
 /**
@@ -273,11 +242,8 @@ function headersSent (res) {
  * @private
  */
 
-function send (req, res, status, headers, message) {
+function send (req, res, status, headers, body) {
   function write () {
-    // response body
-    var body = createHtmlDocument(message)
-
     // response status
     res.statusCode = status
     res.statusMessage = statuses.message[status]
@@ -294,16 +260,12 @@ function send (req, res, status, headers, message) {
     res.setHeader('Content-Security-Policy', "default-src 'none'")
     res.setHeader('X-Content-Type-Options', 'nosniff')
 
-    // standard headers
-    res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.setHeader('Content-Length', Buffer.byteLength(body, 'utf8'))
-
     if (req.method === 'HEAD') {
-      res.end()
+      res.send()
       return
     }
 
-    res.end(body, 'utf8')
+    res.send(body)
   }
 
   if (isFinished(req)) {
