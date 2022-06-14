@@ -83,6 +83,7 @@ function finalhandler (req, res, options) {
         // fallback to status code on response
         status = getResponseStatusCode(res)
       } else {
+        // TODO: why is this an `else` (only if status not undefined)?
         // respect headers from error
         headers = getErrorHeaders(err)
       }
