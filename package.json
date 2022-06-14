@@ -1,10 +1,9 @@
 {
-  "name": "finalhandler",
+  "name": "dexpress-finalhandler",
   "description": "Node.js final http responder",
-  "version": "1.2.0",
-  "author": "Douglas Christopher Wilson <doug@somethingdoug.com>",
+  "version": "0.1.0",
+  "author": "Niels Abildgaard <niels@deranged.dk>",
   "license": "MIT",
-  "repository": "pillarjs/finalhandler",
   "dependencies": {
     "debug": "2.6.9",
     "encodeurl": "~1.0.2",

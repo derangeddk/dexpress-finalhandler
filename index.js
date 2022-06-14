@@ -2,6 +2,10 @@
  * finalhandler
  * Copyright(c) 2014-2022 Douglas Christopher Wilson
  * MIT Licensed
+ * -------------------
+ * dexpress-finalhandler
+ * Copyright(c) 2022 Niels Roesen Abildgaard
+ * MIT Licensed
  */
 
 'use strict'
