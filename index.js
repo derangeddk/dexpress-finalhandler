@@ -145,7 +145,7 @@ function getErrorBody (err, status) {
     var body = { reason: err.message || statuses.message[status] };
 
     for (var key in err) {
-      if([ 'message', 'reason' ].includes(key)) {
+      if([ 'message', 'reason', 'status', 'statusCode', 'expose' ].includes(key)) {
         continue;
       }
       body[key] = err[key];
