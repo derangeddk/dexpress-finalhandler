@@ -49,7 +49,7 @@ function finalhandler (req, res, options) {
   var opts = options || {}
 
   // get error callback
-  var onerror = opts.onerror
+  var { onerror, onservererror } = opts
 
   // get error transformer, transforms error before handling as error
   // this gives users a chance to transform errors to http-errors to
@@ -66,6 +66,7 @@ function finalhandler (req, res, options) {
       defer(onerror, err, req, res)
     }
 
+    var rawErr = err
     err = errortransform(err)
 
     // ignore 404 on in-flight response
@@ -86,6 +87,10 @@ function finalhandler (req, res, options) {
         // TODO: why is this an `else` (only if status not undefined)?
         // respect headers from error
         headers = getErrorHeaders(err)
+      }
+
+      if ((!status || status >= 500) && onservererror) {
+        onservererror(rawErr)
       }
 
       // get error message
