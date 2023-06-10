@@ -105,8 +105,13 @@ function finalhandler (req, res, options) {
 
     // cannot actually respond
     if (headersSent(res)) {
-      debug('cannot %d after headers sent', status)
-      req.socket.destroy()
+      debug('cannot %d after headers sent', status
+
+      if(req.socket) {
+        // Clean up socket if any is present
+        req.socket.destroy()
+      }
+
       return
     }
 
